@@ -1,0 +1,350 @@
+---
+title: "Project2"
+author: "Anh Doan(atd2354)"
+output:   
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r, echo = FALSE}
+#Import neccessary packages
+library(ggplot2)
+library(stringr)
+library(dplyr)
+```
+
+# **1. Introduction**
+
+<p style="font-family:georgia; font-size:16px"> The dataset I selected for analysis comprises Premier League Player Statistics from All Seasons, a comprehensive collection of performance metrics for players in one of the most prestigious football leagues globally. The statistics included cover key performance indicators such as goals, assists, matches played, and ages, which can provide insights into both individual player achievements and team dynamics. </p>
+
+<p style="font-family:georgia; font-size:16px"> **Source Link**: [kaggle](https://www.kaggle.com/datasets/rishikeshkanabar/premier-league-player-statistics-updated-daily/data) </p>
+
+<center>
+
+![**Image**: [Sky Sports](https://e0.365dm.com/24/07/2048x1152/skysports-premier-league-season_6629191.jpg?20240717140210)](https://e0.365dm.com/24/07/2048x1152/skysports-premier-league-season_6629191.jpg?20240717140210){width="60%"}
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> I chose this dataset due to my interest in soccer and data analysis. My investigation will focus on understanding player contributions through various metrics, including goals, assists, wins, and losses, and how these factors correlate with overall team success. </p>
+
+# **2. Data Preparation**
+
+<p style="font-family:georgia; font-size:16px"> To obtain the data, I downloaded a CSV file directly from Kaggle containing the statistics. Using R, I imported the data using **read.csv()** function. Given that I intend to work only with 11 columns, I filtered out unnecessary variables during the import process. Moreover, I removed any rows with N/A values to ensure data consistency and simplify analysis. </p>
+
+```{r, echo = FALSE, results = "hide"}
+#Import the dataset:
+original_data <- read.csv("Project2.csv")
+```
+
+<p style="font-family:georgia; font-size:16px"> One of the main challenges that I encountered was reducing the data to 11 columns. It required a careful balance to retain essential information without losing context, as many variables provided useful insights but weren't crucial for my specific analysis goals. </p>
+
+# **3. Variables Description**
+
+```{r, echo = FALSE, results = "hide"}
+#Create a subset thst only includes the variables of interest
+data <- original_data[,1:10]
+data$Assists <- original_data$Assists
+
+#Remove all the variables with "NA" values:
+data <- na.omit(data)
+
+#Create two new variables of interest:
+data$`Goals Contribution` <- data$Goals + data$Assists
+data$Class <- ifelse(data$Appearances >= 100, "Veterans", 
+                     ifelse(data$Appearances >= 50, "Regulars", "Rookies"))
+```
+
+```{r, echo = FALSE}
+type <- unname(sapply(data,class))
+description <- c("Player's Name",
+                 "Player's Jersey Number",
+                 "Team The Player Represents",
+                 "Position Played on The Field",
+                 "Player's Nationality",
+                 "Player's Age",
+                 "Total Number of Matches Played",
+                 "Number of Matches Won",
+                 "Number of Matches Lost",
+                 "Total goals scored",
+                 "Total assists made",
+                 "Total Goal Contributions",
+                 "Player's Appearance Class")
+table <- data.frame(Name = colnames(data),Type = str_to_title(type), Description = description)
+table
+```
+
+# **4. Univariate Analyses**
+
+```{r, echo = FALSE}
+data_ggplot <- ggplot(data)
+
+#Write a function to plot histograms or bar charts based on the variable type
+univariate <- function(variable, color, bw = 0){
+  var <- data[[variable]]
+  #Check if the variable is numeric
+  if (is.numeric(var)){
+    data_ggplot + geom_histogram(aes(x=var), fill = color, col = "black", binwidth = bw) +
+      labs(title = paste("Distribution of", variable), x = variable, y = "Number of Players")
+  #Check if the variable is character (categorical)
+  }else if (is.character(var)){
+    data_ggplot + geom_bar(aes(x=var), fill=color, col = "black") +
+      labs(title = paste("Frequency of", variable), x = variable, y = "Number of Players")
+  }
+}
+```
+
+### **- Goals Contribution**
+
+<center>
+
+```{r, echo = FALSE}
+univariate("Goals Contribution","darkred",10)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The histogram displays the distribution of goals contribution among a group of players. The distribution is heavily right-skewed, indicating that there are a large number of players with a low number of goals, and a few players with a very high number of goals. The mean number of goals scored is **`r round(mean(data$Goals),2)`**, while the median is **`r round(median(data$Goals),2)`**. Additionally, the standard deviation is **`r round(sd(data$Goals),2)`**, reflecting the extent of variability in the number of goals scored among players. </p>
+
+### **- Player's Age**
+
+<center>
+
+```{r, echo = FALSE}
+univariate("Age","darkorange",1)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The histogram displays the distribution of ages among players. The distribution appears to be roughly unimodal, with a single peak at the age of **29**. The mean age of the player is **`r round(mean(data$Age),2)`**, while the median is **`r round(median(data$Age),2)`**, suggesting that half of the players are younger than this value. Additionally, the standard deviation is **`r round(sd(data$Age),2)`**, providing insight into the variability in ages within the player pool. </p>
+
+### **- Player's Position**
+
+<center>
+
+```{r, echo = FALSE}
+univariate("Position", "#016c59")
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> Frequency: </p>
+
+<center>
+
+```{r, echo = FALSE}
+table(data$Position)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The bar chart illustrates the distribution of player positions. Defenders and midfielders dominate, each comprising nearly **200** players. Forwards follow with **109** players, while goalkeepers constitute the smallest group with only **67** players. This distribution suggests a balanced team with a strong defensive and midfield presence, coupled with a sufficient number of attacking players. </p>
+
+### **- Player's Appearance Class**
+
+<center>
+
+```{r,echo=FALSE}
+univariate("Class", "#045a8d")
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> Frequency: </p>
+
+<center>
+
+```{r, echo = FALSE}
+table(data$Class)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The bar chart illustrates the distribution of players across three experience levels: Rookies (Less than 50 Appearances), Regulars (More than 50 Appearances and Less than 100 Appearances) and Veterans (More than 100 Appearances). **84** players are categorized as Regulars, showcasing a moderate level of experience and performance. In contrast, **323** players fall under the Rookies category, indicating a significant presence of newer talent within the league. Lastly, **155** players are identified as Veterans, reflecting their extensive experience and contribution to their respective teams. </p>
+
+# **5. Multivariate Analyses**
+
+### **- Player's Age vs Player's Position**
+
+<center>
+
+```{r, echo = FALSE}
+data_ggplot + geom_histogram(aes(x = Age,fill = Position),col = "black")+
+       scale_fill_brewer(type = 'qual', palette = 2) +
+       facet_wrap( ~ Position) +
+       labs(x = "Age", title = "Histogram of Age by Position") +
+       theme(legend.position = 'bottom')
+```
+
+</center>
+
+<center>
+
+```{r, echo = FALSE}
+age_by_position <- group_by(data, Position)
+age_summary <- summarise(age_by_position,
+  Mean_Age = round(mean(Age),2),
+  Median_Age = round(median(Age),2),
+  Min_Age = min(Age),
+  Max_Age = max(Age),
+)
+
+print(age_summary)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The plot allows us to observe how player age varies across different positions. Defenders and Forwards have similar average ages, around **25** years old. Goalkeepers, on average, are older, with a mean age of **28.1** years. Midfielders have a mean age of **25.4** years, aligning with Forwards and Defenders. The median age for all positions is close to the mean, indicating a relatively symmetric distribution. Notably, the maximum age for Defenders and Goalkeepers reaches **38** years, highlighting the potential for experienced players to extend their careers in these positions. </p>
+
+### **- Total Goals Scored vs Total Assists Made by Class**
+
+<center>
+
+```{r, echo = FALSE}
+data_ggplot +
+      geom_point(aes(x = Goals, y = Assists, color = Class)) +
+      labs(x = "Goals", y = "Assists", color = "Class",
+           title ="Scatter Plot of Goals Scored vs Assists Made, Colored by Class") 
+```
+
+</center>
+
+<center>
+
+```{r, echo = FALSE}
+goals_assists_by_class <- group_by(data, Class)
+goals_assists_summary <- summarise(goals_assists_by_class,
+  Mean_Goals = round(mean(Goals),2),
+  Median_Goals = median(Goals),
+  Mean_Assists = round(mean(Assists),2),
+  Median_Assists = median(Assists),
+)
+
+print(goals_assists_summary)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The scatter plot shows how players' total goals scored relate to their assist counts, with color coding based on class. Players who score a lot may also assist frequently, demonstrating their dual role in offense. Veterans, on average, outperformed both Regulars and Rookies in terms of goals and assists. While Regulars showed a moderate level of performance, Rookies, as expected, had significantly lower averages. The Scatter Plot has a correlation of **`r round(cor(data$Goals, data$Assists),2)`**. This [positive correlation]{style="color: red;"} indicates a strong relationship between the two variables, suggesting that players who score more goals tend to also provide more assists. </p>
+
+### **- Matches Won vs Matches Loss by Big 6 Teams**
+
+<center>
+
+```{r, echo = FALSE}
+#Make a subset of only players from Big 6 teams (Arsenal, Chelsea, Liverpool, Manchester City, Manchester United, and Tottenham Hotspur)
+
+subset <- data[data$Club %in% c("Arsenal","Chelsea", "Liverpool", "Manchester-City", "Manchester-United","Tottenham-Hotspur"),]
+subset_ggplot <- ggplot(subset)
+
+ subset_ggplot +
+      geom_point(aes(x = Wins, y = Losses, color = Club)) +
+      labs(x = "Matches Won", y = "Matches Loss", color = "Club",
+           title ="Scatter Plot of Matches Won vs Matches Lost, Colored by Big 6 Teams") 
+```
+
+</center>
+
+<center>
+
+```{r, echo = FALSE}
+matches_by_club <- group_by(subset, Club)
+matches_summary <- summarise(matches_by_club,
+  Mean_Wins = round(mean(Wins),2),
+  Median_Wins = median(Wins),
+  Mean_Losses = round(mean(Losses),2),
+  Median_Losses = median(Losses),
+)
+
+print(matches_summary)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The scatter plot helps visualize the performance of players from Big 6 teams (Arsenal, Chelsea, Liverpool, Manchester United, Manchester City, and Tottenham Hotspur) in terms of wins and losses. The summary statistics for the Big 6 teams highlight significant performance differences in wins and losses. Players from Liverpool and Manchester City stand out, averaging **51.6** and **67.5** wins, respectively, with Liverpool's median at **41** and Manchester City's at **52**. Chelsea and Manchester United players show moderate averages of **39.4** and **46.9** wins, while Tottenham Hotspur and Arsenal players lag behind, averaging **47.6** and **33.5** wins. Notably, Liverpool players has the lowest average losses at **17.6**, reflecting their efficiency, whereas Tottenham Hotspur and Manchester United face challenges with average losses of **25.7** and **22.4**. The correlation between wins and losses across players from these teams is **`r round(cor(subset$Wins, subset$Losses),2)`**, implying that high-performing players (in terms of wins) may also engage in more games overall, giving players more opportunities for both wins and losses. </p> 
+
+### **- Player's Age by Club**
+
+<center>
+
+```{r, echo = FALSE}
+data_ggplot +
+  geom_boxplot(aes(x=Club, y = Age, fill = Club)) +
+  labs(x = "Team", y = "Player Age", 
+       fill = "Team",
+       title = "Box Plot of Player Age by Team") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "none") 
+```
+
+</center>
+
+<center>
+
+```{r, echo =FALSE}
+age_by_club <- group_by(data, Club)
+age_summary_by_club <- summarise(age_by_club,
+  Mean_Age = round(mean(Age),2),
+  Median_Age = median(Age),
+  Min_Age = min(Age),
+  Max_Age = max(Age),
+)
+
+print(age_summary_by_club)
+```
+
+</center>
+
+<p style="font-family:georgia; font-size:16px"> The plot reveals how the average age of players varies among clubs. It can show which clubs have a younger or older squad. Crystal Palace has the highest mean age at **27.8**, indicating a more experienced squad, while Leeds United features the youngest average at **24.2**. Most clubs, including Arsenal and Chelsea, maintain average ages around **25 to 26**. The age range among players is quite broad, with the youngest player being **17** years old (Leeds United, Manchester City, and Liverpool) and the oldest reaching **38** (Chelsea and Sheffield United) </p>
+
+# **6. Reproducibility Resources** 
+
+<p style="font-family:georgia; font-size:16px"> **Link to my repository**: [Github Repository](https://github.com/anhdoan0611/Project2) </p>
+
+<p style="font-family:georgia; font-size:16px"> The GitHub repository contains the following files: </p> 
+
+- <p style="font-family:georgia; font-size:16px"> **"README.md"**: A file providing an overview of the project and instructions for reproducing the analysis.  </p>
+- <p style="font-family:georgia; font-size:16px"> **"Project2.csv"**: The data set used for analysis in CSV format. </p>
+- <p style="font-family:georgia; font-size:16px"> **"Project2.Rmd"**: The main report detailing the analysis of player statistics. </p>
+- <p style="font-family:georgia; font-size:16px"> **"Project2.html"**: The HTML version of the report generated from the RMarkdown file. </p>
+
+# **7. Choice Elements** 
+
+<p style="font-family:georgia; font-size:16px"> In this report, I incorporated five key elements: (A) in-line codes, (D) two new variables of interest, (E) manage N/A values, (J) an if statement, and (K) an user-written function. Firstly, I utilized **in-line codes** to seamlessly integrate code snippets within the narrative, specifically highlighted in lines 114, 126, 235, and 271. Secondly, I **created two new variables of interest**: Goals Contribution, which is the sum of goals and assists, and Class, categorizing players into Rookies (less than 50 appearances), Regulars (50 to 99 appearances), and Veterans (100 or more appearances). To ensure the quality of the dataset, I **removed all rows with N/A values**. Lastly, I developed a **user-written function** that utilizes an **if-else statement** to distinguish between character and numeric variables, enabling effective plotting of univariate graphs. </p>
+
+# **8. Conclusion** 
+
+<p style="font-family:georgia; font-size:16px"> In this report, I found notable relationships among player age, position, goal contributions (goals and assists), and team performance in the Premier League dataset.
+
+- <p style="font-family:georgia; font-size:16px"> **Goals Contribution**:  The distribution of goals contribution is heavily right-skewed, with many players scoring few goals and a select few achieving high totals. The mean of 7.44 goals contrasts sharply with the median of 1, underscoring this skew. The high standard deviation (16.92) highlights substantial variability in scoring capabilities across players. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Age Distribution**: Player ages are roughly unimodal, peaking around 29 years. The mean age is 25.81, closely aligning with the median age of 26, indicating a generally balanced age distribution. A standard deviation of 4.36 suggests moderate variability, with most players falling within a close age range around the mean. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Position Distribution**: Defenders and midfielders make up the largest groups, each with nearly 200 players, highlighting a robust defensive and midfield presence across teams. Forwards and goalkeepers are fewer, with goalkeepers forming the smallest group at 67 players. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Experience Levels**: The distribution of experience reveals a league rich in emerging talent, with 323 players categorized as Rookies . Regulars total 84 players, while Veterans comprise 155 players, reflecting a solid mix of new talent and seasoned professionals within the league. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Age Distribution by Position**:  Defenders and Forwards show similar average ages around 25, while Goalkeepers tend to be older, with an average of 28.1 years. Midfielders align closely with Defenders and Forwards. The relatively symmetric age distribution across positions suggests a balanced spread without extreme age biases. </p> 
+
+- <p style="font-family:georgia; font-size:16px"> **Goals vs Assists by Correlation**: A strong positive correlation **(0.72)** exists between goals scored and assists, suggesting that players who score frequently often contribute significantly in creating goals for others, indicating a dual offensive role. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Class Performance**: Veterans generally outperform both Regulars and Rookies in both goals and assists, reflecting their experience and skill. Regulars show moderate performance, while Rookies, as expected, have lower averages in these metrics. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Matches Won vs Matches Loss by Big 6 Clubs**: Players from Big 6 clubs show significant performance differences in wins and losses. Manchester City players leads in wins, with Liverpool close behind and holding the second lowest average losses, highlighting efficiency. In contrast, players from Tottenham and Manchester United show higher average losses, pointing to challenges in maintaining a winning consistency. </p>
+
+- <p style="font-family:georgia; font-size:16px"> **Average Age by Club**: Crystal Palace has the oldest average squad at 27.8 years, indicating experience, while Leeds United has the youngest at 24.2 years. The age range in the league is broad, with players as young as 17 and as old as 38, showcasing the league’s mix of emerging talents and seasoned veterans. </p> 
+
+# **9. References**
+
+- <p style="font-family:georgia; font-size:16px"> **Data Source**: [kaggle](https://www.kaggle.com/datasets/rishikeshkanabar/premier-league-player-statistics-updated-daily/data) </p>
+
+
+
+
